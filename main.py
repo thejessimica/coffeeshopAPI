@@ -1,6 +1,9 @@
 from flask import Flask, jsonify, render_template, request
 from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField, SelectField, BooleanField
+from wtforms.validators import DataRequired, URL
 import random
 import os
 
@@ -13,6 +16,21 @@ db.init_app(app)
 
 app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
 Bootstrap5(app)
+
+
+class CafeForm(FlaskForm):
+    name = StringField('Cafe Name', validators=[DataRequired()])
+    map_url = StringField('Maps URL', validators=[DataRequired(), URL(require_tld=True, message="Please enter a valid URL.")])
+    img_url = StringField('Image URL', validators=[DataRequired(), URL(require_tld=True, message="Please enter a valid URL.")])
+    location = StringField('Location Name', validators=[DataRequired()])
+    seats = StringField('Seats', validators=[DataRequired()])
+    has_toilet = BooleanField('Washrooms', validators=[DataRequired()])
+    has_wifi = BooleanField('Wifi')
+    has_sockets = BooleanField('Power')
+    can_take_calls = BooleanField('Takes Calls')
+    coffee_price = StringField('Coffee Price')
+    submit = SubmitField('Submit')
+
 
 
 # Cafe TABLE Configuration
@@ -57,47 +75,38 @@ def home():
 
 @app.route('/cafes')
 def cafes():
-    # with open('cafe-data.csv', newline='', encoding='utf-8') as csv_file:
-    #     csv_data = csv.reader(csv_file, delimiter=',')
-    #     list_of_rows = []
-    #     for row in csv_data:
-    #         print(row)
-    #         list_of_rows.append(row)
-    #     print(list_of_rows[0])
     result = db.session.execute(db.select(Cafe).order_by(Cafe.name))
     all_cafes = result.scalars().all()
     list_of_cafes = []
     for cafe in all_cafes:
         list_of_cafes.append(cafe.to_dict())
-    print(list_of_cafes)
-    # list_of_rows = "null"
     return render_template('cafes.html', cafes=list_of_cafes)
 
 
 @app.route('/add', methods=['POST', 'GET'])
 def add_cafe():
-    form = "form"
-    # form = CafeForm()
-    # if form.validate_on_submit():
-    #     print("True")
-    #     cafe = form.cafe.data
-    #     location = form.location.data
-    #     open_time = form.open_time.data
-    #     close_time = form.close_time.data
-    #     coffee = form.coffee.data
-    #     wifi = form.wifi.data
-    #     power = form.power.data
-    #     cafe_data = open("cafe-data.csv", "a", encoding="utf-8")
-    #     cafe_data.write(f"\n{cafe}, {location}, {open_time}, {close_time}, {coffee}, {wifi}, {power}")
-    #     cafe_data.close()
-    #     with open('cafe-data.csv', newline='', encoding='utf-8') as csv_file:
-    #         csv_data = csv.reader(csv_file, delimiter=',')
-    #         list_of_rows = []
-    #         for row in csv_data:
-    #             print(row)
-    #             list_of_rows.append(row)
-    #         print(list_of_rows[0])
-    #     return render_template('cafes.html', cafes=list_of_rows)
+    form = CafeForm()
+    if form.validate_on_submit():
+        new_cafe = Cafe(
+            name=request.form.get("name"),
+            map_url=request.form.get("map_url"),
+            img_url=request.form.get("img_url"),
+            location=request.form.get("location"),
+            has_sockets=bool(request.form.get("sockets")),
+            has_toilet=bool(request.form.get("toilet")),
+            has_wifi=bool(request.form.get("wifi")),
+            can_take_calls=bool(request.form.get("calls")),
+            seats=request.form.get("seats"),
+            coffee_price=request.form.get("coffee_price"),
+        )
+        db.session.add(new_cafe)
+        db.session.commit()
+        result = db.session.execute(db.select(Cafe).order_by(Cafe.name))
+        all_cafes = result.scalars().all()
+        list_of_cafes = []
+        for cafe in all_cafes:
+            list_of_cafes.append(cafe.to_dict())
+        return render_template('cafes.html', cafes=list_of_cafes)
     return render_template('add.html', form=form)
 
 
@@ -134,7 +143,6 @@ def search_cafes():
 @app.route("/api/add", methods=["POST"])
 def post_new_cafe():
     new_cafe = Cafe(
-        # Note that the keys we will use in Postman are the strings EG. "loc" instead of "location"
         name=request.form.get("name"),
         map_url=request.form.get("map_url"),
         img_url=request.form.get("img_url"),
