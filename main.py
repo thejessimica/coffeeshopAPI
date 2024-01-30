@@ -64,8 +64,14 @@ def cafes():
     #         print(row)
     #         list_of_rows.append(row)
     #     print(list_of_rows[0])
-    list_of_rows = "null"
-    return render_template('cafes.html', cafes=list_of_rows)
+    result = db.session.execute(db.select(Cafe).order_by(Cafe.name))
+    all_cafes = result.scalars().all()
+    list_of_cafes = []
+    for cafe in all_cafes:
+        list_of_cafes.append(cafe.to_dict())
+    print(list_of_cafes)
+    # list_of_rows = "null"
+    return render_template('cafes.html', cafes=list_of_cafes)
 
 
 @app.route('/add', methods=['POST', 'GET'])
@@ -96,7 +102,7 @@ def add_cafe():
 
 
 # ALL BELOW ARE FOR API CALLS
-@app.route("/random")
+@app.route("/api/random")
 def find_random_cafe():
     result = db.session.execute(db.select(Cafe))
     all_cafes = result.scalars().all()
@@ -104,7 +110,7 @@ def find_random_cafe():
     return jsonify(cafe=random_cafe.to_dict())
 
 
-@app.route('/all')
+@app.route('/api/all')
 def get_all_cafes():
     result = db.session.execute(db.select(Cafe).order_by(Cafe.name))
     all_cafes = result.scalars().all()
@@ -114,7 +120,7 @@ def get_all_cafes():
     return jsonify(list_of_cafes)
 
 
-@app.route('/search')
+@app.route('/api/search')
 def search_cafes():
     query_location = request.args.get("loc")
     result = db.session.execute(db.select(Cafe).where(Cafe.location == query_location))
@@ -125,7 +131,7 @@ def search_cafes():
         return jsonify(error={"Not Found": "Sorry, we don't have a cafe at that location."}), 404
 
 
-@app.route("/add", methods=["POST"])
+@app.route("/api/add", methods=["POST"])
 def post_new_cafe():
     new_cafe = Cafe(
         # Note that the keys we will use in Postman are the strings EG. "loc" instead of "location"
@@ -145,7 +151,7 @@ def post_new_cafe():
     return jsonify(response={"success": "Successfully added the new cafe."})
 
 
-@app.route("/update-price/<int:cafe_id>", methods=["PATCH"])
+@app.route("/api/update-price/<int:cafe_id>", methods=["PATCH"])
 def patch_new_price(cafe_id):
     new_price = request.args.get("new_price")
     cafe = db.get_or_404(Cafe, cafe_id)
@@ -159,7 +165,7 @@ def patch_new_price(cafe_id):
         return jsonify(error={"Not Found": "Sorry a cafe with that id was not found in the database."}), 404
 
 
-@app.route("/report-closed/<int:cafe_id>", methods=["DELETE"])
+@app.route("/api/report-closed/<int:cafe_id>", methods=["DELETE"])
 def delete_cafe(cafe_id):
     api_key = request.args.get("api_key")
     if api_key == "TopSecretAPIKey":
